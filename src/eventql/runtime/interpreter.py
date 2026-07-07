@@ -1,6 +1,40 @@
 import torch
-from eventql.ast.nodes import Signal, Constant, Diff, Shift, Cumsum, Eq, Lt, Gt, And, Or, Enter, Exit, Before, After
+from eventql.ast.nodes import Signal, Constant, Diff, Shift, Cumsum, Eq, Lt, Gt, And, Or, Enter, Exit, Before, After, Between
 
+def expand_events(node, events):
+
+    # --------------------
+    # base cases
+    # --------------------
+    if isinstance(node, Signal):
+        if node.name in events:
+            return expand_events(events[node.name], events)
+        return node
+
+    if isinstance(node, Constant):
+        return node
+
+    # --------------------
+    # unary ops
+    # --------------------
+    if hasattr(node, "expr"):
+        return type(node)(
+            expand_events(node.expr, events)
+        )
+
+    # --------------------
+    # binary ops
+    # --------------------
+    if hasattr(node, "left") and hasattr(node, "right"):
+        return type(node)(
+            expand_events(node.left, events),
+            expand_events(node.right, events)
+        )
+
+    # --------------------
+    # fallback
+    # --------------------
+    return node
 
 def eval_value(node, ctx):
 
@@ -92,3 +126,13 @@ def eval_value(node, ctx):
         x = eval_value(node.expr, ctx)
         c = torch.cumsum(x, dim=0)
         return c >= 1
+
+    if isinstance(node, Between):
+        left = eval_value(node.left, ctx)
+        right = eval_value(node.right, ctx)
+
+        return(
+            torch.cumsum(left.int(), dim=0)
+            >
+            torch.cumsum(right.int(), dim=0)
+        )

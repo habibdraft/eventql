@@ -1,7 +1,7 @@
 # transformer.py
 
 from lark import Transformer
-from eventql.ast.nodes import Signal, Constant, Diff, Shift, Cumsum, Eq, Lt, Gt, And, Or, Enter, Exit, Before, After
+from eventql.ast.nodes import Signal, Constant, Diff, Shift, Cumsum, Eq, Lt, Gt, And, Or, Enter, Exit, Before, After, Between
 
 
 class ASTBuilder(Transformer):
@@ -49,3 +49,6 @@ class ASTBuilder(Transformer):
 
     def after(self, items):
         return After(items[0])
+
+    def between(self, items):
+        return Between(items[0], items[1])

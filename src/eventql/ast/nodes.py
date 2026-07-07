@@ -70,3 +70,8 @@ class And(Node):
 class Or(Node):
     left: Node
     right: Node
+
+@dataclass
+class Between(Node):
+    left: Node
+    right: Node
