@@ -15,82 +15,48 @@ All compiled through a **grammar → AST → evaluation pipeline**.
 
 ---
 
+## Install
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+```
+
 ## Example
 
-### DSL
-
-```dsl
-stable(x) = std(x) < 5
-
-t(y) = sum(y where stable(x))
-```
-
-### Equivalent Python-ish logic
-
 ```python
-stable = lambda x: np.std(x) < 5
-t = lambda x, y: y[stable(x)].sum()
+import torch
+
+from eventql import ASTBuilder, compiler, parser
+
+tree = parser.parse("C(x) > 2")
+node = ASTBuilder().transform(tree)
+expression = compiler(node)
+result = expression.evaluate({"x": torch.tensor([1.0, 2.0, 3.0])})
+```
+
+The current grammar supports signal names, numeric constants, differences,
+cumulative sums, comparisons, and Boolean `&`/`|` composition.
+
+---
+
+## Project structure
+
+```
+src/eventql/
+├── ast/                    # AST nodes
+├── compiler/               # Typed expression wrapper
+├── parser/                 # Lark grammar and transformer
+├── runtime/                # PyTorch evaluator
+└── semantics/              # Type inference
 ```
 
 ---
 
-## Project Structure
+## DSL syntax
 
-```
-signal_transform/
-│
-├── dsl/
-│   └── grammar.lark        # DSL grammar (Lark)
-│
-├── src/
-│   ├── ast_nodes.py        # AST node definitions
-│   ├── transformer.py      # Parse tree → AST
-│   ├── evaluate.py         # AST execution engine
-│
-└── README.md
-```
-
----
-
-## DSL Syntax
-
-### 1. Signal Definitions
-
-Define reusable predicates over signals:
-
-```dsl
-stable(x) = std(x) < 5
-```
-
----
-
-### 2. Conditional Aggregation
-
-Filter before aggregation:
-
-```dsl
-mean(y where x > 0)
-sum(y where stable(x))
-```
-
----
-
-### 3. Composition
-
-Signals can depend on other signals:
-
-```dsl
-stable(x) = std(x) < 2
-clean(x) = mean(x where stable(x))
-```
-
----
-
-### 4. Nested Expressions
-
-```dsl
-score(x, y) = mean(x where y > threshold)
-```
+Examples: `D(x)`, `C(x) > 2`, and `(x > 0) & (y < 5)`.
 
 ---
 
@@ -103,58 +69,17 @@ Core node types:
 | Signal           | Named signal reference           |
 | Constant         | Numeric literal                  |
 | BinaryOp         | Arithmetic / comparisons         |
-| FunctionCall     | std, mean, sum, etc.            |
-| WhereClause      | Filtering condition              |
+| Diff / Cumsum    | Temporal transforms               |
+| Eq / Lt / Gt     | Comparisons                       |
+| And / Or         | Boolean composition               |
 
 ---
 
-## Execution Model
+## Execution model
 
 ```
-data → mask → transform → aggregate → output
+text → parse tree → AST → type inference → PyTorch evaluation
 ```
-
-Example:
-
-```dsl
-sum(y where x > 0)
-```
-
-becomes:
-
-```python
-mask = x > 0
-result = y[mask].sum()
-```
-
----
-
-## Python Usage
-
-```python
-from lark import Lark
-from src.transformer import DSLTransformer
-from src.evaluate import Evaluator
-
-parser = Lark.open("dsl/grammar.lark", start="start")
-
-dsl_code = """
-stable(x) = std(x) < 5
-t(y) = sum(y where stable(x))
-"""
-
-tree = parser.parse(dsl_code)
-ast = DSLTransformer().transform(tree)
-
-result = Evaluator().evaluate(ast, context={
-    "x": x_array,
-    "y": y_array
-})
-
-print(result)
-```
-
----
 
 ## Design Philosophy
 
@@ -168,9 +93,10 @@ print(result)
 
 - Python ≥ 3.10
 - Lark parser
+- PyTorch
 
 ```bash
-pip install lark
+python -m pip install -e .
 ```
 
 ---
@@ -178,4 +104,3 @@ pip install lark
 ## License
 
 MIT
-
